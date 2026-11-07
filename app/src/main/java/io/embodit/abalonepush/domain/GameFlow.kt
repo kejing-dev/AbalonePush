@@ -350,6 +350,7 @@ class GameFlow(
     fun cancelSelection() {
         if (s.phase != Phase.SELECTED) return
         set(s.copy(phase = Phase.IDLE, selection = emptyList(), pads = emptyList()))
+        onSound(Sound.SELECT)
         log("CANCEL -> S03")
     }
 

@@ -175,13 +175,8 @@ fun BoardScreen() {
 }
 
 /** Hit entity (or an ancestor) -> the collider name the game knows: cells (marbles carry their cell's name), pads, board. */
-internal class BoardTargets(private val scene: BoardScene) : TargetResolver<String> {
-    override fun resolve(entity: Entity): String? {
-        val name = runCatching { entity.getName() }.getOrNull() ?: return null
-        if (BoardScene.hitOf(name) != BoardScene.Companion.EmptyHit) return name
-        scene.colliderNameOf(entity)?.let { return it }
-        return if (name == "board" || name == "boardModel" || name == "gutter" || name == "moving" || name == "dropping") "board" else null
-    }
+internal class BoardTargets(@Suppress("unused") private val scene: BoardScene) : TargetResolver<String> {
+    override fun resolve(entity: Entity): String? = runCatching { entity.getName() }.getOrNull()?.let { BoardNames.resolveName(it) }
 
     fun resolveName(entity: Entity?): String? = io.embodit.abalonepush.ui.board.input.resolveUp(entity, this).first
 }
@@ -198,14 +193,7 @@ internal class BoardListener(private val graph: Graph, private val scene: BoardS
 }
 
 /** Collider name -> the one flow call (the same calls the debug broadcast makes). */
-internal fun route(graph: Graph, name: String?) {
-    val flow = graph.flow
-    when (val h = BoardScene.hitOf(name)) {
-        is BoardScene.Companion.CellHit -> flow.tapCell(h.cell)
-        is BoardScene.Companion.PadHit -> flow.tapPad(h.dir)
-        BoardScene.Companion.EmptyHit -> flow.tapEmpty()
-    }
-}
+internal fun route(graph: Graph, name: String?) = BoardNames.dispatch(graph.flow, name)
 
 /** The plate is its own composition: it reads state + language itself so a language switch always reaches it. */
 @Composable

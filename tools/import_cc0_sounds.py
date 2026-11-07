@@ -19,12 +19,16 @@ IMP = "kenney_impact-sounds/Audio/"
 CAS = "kenney_casino-audio/Audio/"
 
 # event -> (max seconds, low-pass Hz, gain dB, [files])
+# v0.1.1 (headset: 「选棋的声音别那么刺耳」, profile D51): the mix leaves headroom so a push (slide + clack) and a drop
+# that overlap stay under -1 dBFS; the select cue is handled separately below (one soft tick, no variants).
 MAP = {
-    "select": (0.22, 7000, 0, [IMP + "impactGlass_light_000.ogg", IMP + "impactGlass_light_001.ogg", IMP + "impactGlass_light_002.ogg"]),
-    "slide": (0.26, 3200, -3, [CAS + "card-slide-1.ogg", CAS + "card-slide-2.ogg", CAS + "card-slide-3.ogg"]),
-    "clack": (0.22, 6500, 0, [CAS + "chips-collide-1.ogg", CAS + "chips-collide-2.ogg", CAS + "chips-collide-3.ogg"]),
-    "drop": (0.45, 7000, 0, [IMP + "impactGlass_heavy_001.ogg", IMP + "impactGlass_heavy_002.ogg", IMP + "impactGlass_heavy_003.ogg"]),
+    "slide": (0.26, 3200, -9, [CAS + "card-slide-1.ogg", CAS + "card-slide-2.ogg", CAS + "card-slide-3.ogg"]),
+    "clack": (0.22, 6500, -3, [CAS + "chips-collide-1.ogg", CAS + "chips-collide-2.ogg", CAS + "chips-collide-3.ogg"]),
+    "drop": (0.45, 7000, -2, [IMP + "impactGlass_heavy_001.ogg", IMP + "impactGlass_heavy_002.ogg", IMP + "impactGlass_heavy_003.ogg"]),
 }
+SELECT_PEAK_DB = -24.0   # far under the push / drop cues (-1 .. -3 dBFS), the D51 "≤ -18 dB" soft tick
+SELECT_MAX_S = 0.12      # ≤ 0.15 s
+SELECT_LP = 2500         # nothing above ~3 kHz
 SOURCES = {}
 
 
@@ -101,24 +105,35 @@ for event, (max_s, lp, gain, files) in MAP.items():
         SOURCES[name] = "CC0 录音 Kenney " + rel.replace("/Audio/", " / ")
         print(f"{name}.wav <- Kenney {rel}")
 
+# select / add / deselect: ONE soft tick for the whole action family (D51: same sound, no variants, no pitch jitter):
+# the glass tap low-passed hard (2.5 kHz, 3 passes), 120 ms, no compression, peak -24 dBFS
+sel = process(decode(os.path.join(SRC, IMP + "impactGlass_light_000.ogg")), SELECT_MAX_S, SELECT_LP)
+sel = lowpass(sel, SELECT_LP, passes=1)
+k = int(0.05 * RATE); sel[-k:] *= np.linspace(1, 0, k) ** 2
+k = int(0.004 * RATE); sel[:k] *= np.linspace(0, 1, k)
+sel = sel / max(1e-9, np.abs(sel).max()) * 10 ** (SELECT_PEAK_DB / 20)
+write("select", sel); made["select"] = sel
+SOURCES["select"] = "CC0 录音 Kenney kenney_impact-sounds / impactGlass_light_000.ogg（v0.1.1 改：低通 2.5 kHz、120 ms、峰值 -24 dBFS 极柔 tick；选珠 / 加选 / 取消同一声）"
+print("select.wav <- Kenney impactGlass_light_000 (soft tick, %.0f dBFS, %.2f s)" % (SELECT_PEAK_DB, len(sel) / RATE))
+
 # win: three glass taps climbing (C, E, G of the tap's own pitch), 140 ms apart, like three marbles dropping in turn
 tap = process(decode(os.path.join(SRC, IMP + "impactGlass_light_001.ogg")), 0.25, 7000)
 win = np.zeros(int(0.75 * RATE))
 for k, ratio in enumerate((1.0, 1.26, 1.5)):
     s = resample(tap, ratio); o = int(k * 0.14 * RATE)
     win[o:o + len(s)] += s[:len(win) - o]
-write("win", finish(win)); made["win"] = finish(win)
+write("win", finish(win, -2)); made["win"] = finish(win, -2)
 SOURCES["win"] = "CC0 录音 Kenney impact-sounds / impactGlass_light_001.ogg（三次升调拼接：三颗珠接连落槽）"
 # lose: one low, short wooden knock (the tap slowed 10 %), quieter
 lose = resample(process(decode(os.path.join(SRC, IMP + "impactWood_light_002.ogg")), 0.3, 4000), 0.9)
 write("lose", finish(lose, -2)); made["lose"] = finish(lose, -2)
 SOURCES["lose"] = "CC0 录音 Kenney impact-sounds / impactWood_light_002.ogg（降 10 %）"
-il = finish(illegal_tone(), -1)
+il = finish(illegal_tone(), -8)
 write("illegal", il); made["illegal"] = il
 SOURCES["illegal"] = "合成（UI）两声柔和正弦拨音 440→330 Hz、快衰减，非实物声（点灰牌 / 不成线时的提示）"
 
 # the sounding segments back to back (loudness evidence, "发声段" rule)
-order = ["select", "select_2", "slide", "clack", "slide_2", "clack_2", "drop", "select_3", "slide_3", "clack_3", "drop_2", "illegal", "drop_3", "win", "lose"]
+order = ["slide", "clack", "slide_2", "clack_2", "drop", "slide_3", "clack_3", "drop_2", "illegal", "drop_3", "win", "lose"]
 seq = np.concatenate([np.concatenate([made[n], np.zeros(int(0.02 * RATE))]) for n in order])
 with wave.open(os.path.join(ROOT, "tools", "qa-sample.wav"), "wb") as w:
     w.setnchannels(1); w.setsampwidth(2); w.setframerate(RATE)

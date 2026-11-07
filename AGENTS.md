@@ -1,6 +1,6 @@
 # 弹珠棋 Abalone Push: project guidance
 
-Abalone (official 1990 rules) for PICO OS 6 Shared Space, PICO Spatial SDK BOM 6.1.9, package `io.embodit.abalonepush`, v0.1.0.
+Abalone (official 1990 rules) for PICO OS 6 Shared Space, PICO Spatial SDK BOM 6.1.9, package `io.embodit.abalonepush`, v0.1.1 (select cue: one soft -24 dBFS tick, one instance per event; name-based hit resolution + BoardTargetTest replay).
 Design contract: spatial-app-factory `apps/abalone-push/design-package.json` (v1.4; profile A12 one main loop, `v2[]` not built:
 no drag-to-push, no board turn / hand-over, no tilt / skins, no game codes, no puzzles, no 4th / 5th AI level, no online).
 Skeleton from the Royal Game of Ur project (itself Five Stones <- kejing-dev/CloudAir v1.0.2: two containers, theme, sound

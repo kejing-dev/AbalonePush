@@ -104,13 +104,6 @@ internal class BoardScene {
         if (name != null) Log.i(TAG, "HOVER $name")
     }
 
-    /** The collider name of a marble entity (its collider child), for hits on the marble's GLB mesh. */
-    fun colliderNameOf(e: Entity): String? {
-        for (side in 0..1) marbles[side].forEachIndexed { i, m -> if (m === e) return colliderNames[colliders[side][i]] }
-        for ((pad, c) in padColliders) if (pad === e) return c.getName()
-        return null
-    }
-
     fun setRegion(halfY: Float) {
         if (kotlin.math.abs(halfY - regionHalfY) < 1e-4f) return
         regionHalfY = halfY
@@ -148,9 +141,9 @@ internal class BoardScene {
         val t0 = SystemClock.elapsedRealtime()
         boardRoot.addChild(clone(models.board).apply { setName("boardModel") })
         boardRoot.addChild(collider("board", r.boardShape, r).also { place(it, V3(0f, -Layout.BOARD_T / 2, 0f)) })
-        for (c in 0 until Hex.N) boardRoot.addChild(collider("cell:$c", r.cellShape, r).also { place(it, Layout.cell(c, 0.0015f)) })
+        for (c in 0 until Hex.N) boardRoot.addChild(collider(BoardNames.cell(c), r.cellShape, r).also { place(it, Layout.cell(c, 0.0015f)) })
         for (colour in 0..1) repeat(Abalone.PER_SIDE) { i ->
-            val e = clone(models.marbles[colour]).apply { setName("marble:$colour:$i") }
+            val e = clone(models.marbles[colour]).apply { setName("none") }
             runCatching { e.components.set(HoverEffectComponent()) }
             val c = collider("none", r.marbleShape, r)
             e.addChild(c)
@@ -160,7 +153,7 @@ internal class BoardScene {
         }
         for ((variant, template) in models.pads) {
             padPool[variant] = List(6) { i ->
-                val e = clone(template).apply { setName("pad:$variant:$i"); enabled = false }
+                val e = clone(template).apply { setName("pad:x"); enabled = false }
                 val c = collider("pad:x", r.padShape, r)
                 e.addChild(c)
                 padColliders[e] = c
@@ -247,7 +240,8 @@ internal class BoardScene {
             ent.enabled = true
             setPos(ent, at)
             val c = colliders[colour][i]
-            if (colliderNames[c] != name) { c.setName(name); colliderNames[c] = name }
+            // collider and marble entity both carry the cell: a hit on the GLB mesh walks up to the marble (resolvePath)
+            if (colliderNames[c] != name) { c.setName(name); ent.setName(name); colliderNames[c] = name }
         }
         for (c in 0 until Hex.N) {
             val colour = base.owner(c)
@@ -255,7 +249,7 @@ internal class BoardScene {
             val to = moving[c]
             if (m == null || to == null) {
                 val lift = if (c in lifted) Layout.LIFT * liftK else 0f
-                put(colour, Layout.marble(c, lift), "cell:$c")
+                put(colour, Layout.marble(c, lift), BoardNames.cell(c))
                 continue
             }
             val pushedMarble = colour != m.side
@@ -309,7 +303,7 @@ internal class BoardScene {
             ent.transform().setQuaternion(dirQ(p.dir))
             val breathe = if (hintPad == p.dir && !reduced) 1f + 0.08f * sin(clock * 5f) else 1f
             ent.transform().setScaleVector(Vector3(breathe, 1f, breathe))
-            padColliders[ent]?.let { c -> val n = "pad:${p.dir}"; if (colliderNames[c] != n) { c.setName(n); colliderNames[c] = n } }
+            padColliders[ent]?.let { c -> val n = BoardNames.pad(p.dir); if (colliderNames[c] != n) { c.setName(n); ent.setName(n); colliderNames[c] = n } }
         }
         for ((v, pool) in padPool) for (i in padsUsed.getOrDefault(v, 0) until pool.size) pool[i].enabled = false
 
@@ -381,25 +375,5 @@ internal class BoardScene {
     fun dispose() {
         res?.close()
         res = null
-    }
-
-    companion object {
-        sealed interface Hit
-        data class CellHit(val cell: Int) : Hit
-        data class PadHit(val dir: Int) : Hit
-        data object EmptyHit : Hit
-
-        /** A collider name -> what was tapped ("cell:<i>", "pad:<d>"; "board" / "gutter" / anything else = empty). */
-        fun hitOf(name: String?): Hit {
-            if (name == null) return EmptyHit
-            val f = name.split(":")
-            return when (f[0]) {
-                "cell" -> f.getOrNull(1)?.toIntOrNull()?.takeIf { it in 0 until Hex.N }?.let { CellHit(it) } ?: EmptyHit
-                "pad" -> f.getOrNull(1)?.toIntOrNull()?.takeIf { it in 0..5 }?.let { PadHit(it) } ?: EmptyHit
-                else -> EmptyHit
-            }
-        }
-
-        fun known(name: String): Boolean = hitOf(name) != EmptyHit || name == "board" || name == "boardModel"
     }
 }

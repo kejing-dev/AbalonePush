@@ -73,6 +73,10 @@ class Graph(context: Context) {
 val VOLUME_PERCENT = intArrayOf(35, 65, 100)
 
 /**
+ * v0.1.1 (headset 「选棋的声音别那么刺耳」, D51): the select cue is one soft low-passed tick (-24 dBFS, 0.1 s) for select /
+ * add / deselect alike, never varied; every event plays at most one instance (the previous stream of the same event is
+ * stopped first); the files carry the mix headroom (slide -10, clack -4, drop -3 dBFS) so overlapping cues stay under
+ * -1 dBFS (tools/render_mix.py renders the code's timing).
  * Short effects from assets/sounds/<name>.wav (+ _2 / _3 variants) through a SoundPool. Repeated sounds (dice, piece
  * clack, drop, CC0 recordings) rotate their 2-4 variants with a random rate of 0.95-1.05 that never repeats back to back (design sound.variation).
  */
@@ -80,7 +84,7 @@ class SoundPlayer(context: Context) {
     @Volatile var enabled = true
     @Volatile var volumeLevel = 2
 
-    private val pool = SoundPool.Builder().setMaxStreams(8)
+    private val pool = SoundPool.Builder().setMaxStreams(4)
         .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
         .build()
     private val ids = HashMap<Sound, List<Int>>()
@@ -88,7 +92,9 @@ class SoundPlayer(context: Context) {
     private val random = Random(11)
     private val lastRate = HashMap<Sound, Float>()
     private val lastVariant = HashMap<Sound, Int>()
-    private val varied = setOf(Sound.SELECT, Sound.SLIDE, Sound.CLACK, Sound.DROP)
+    private val varied = setOf(Sound.SLIDE, Sound.CLACK, Sound.DROP)
+    /** D51: the same event never stacks: a new play stops the previous stream of that event first. */
+    private val playing = HashMap<Sound, Int>()
 
     init {
         pool.setOnLoadCompleteListener { _, id, status -> if (status == 0) synchronized(loaded) { loaded += id } }
@@ -119,7 +125,8 @@ class SoundPlayer(context: Context) {
         }
         val id = variants[v]
         if (synchronized(loaded) { id !in loaded }) return
-        pool.play(id, vol, vol, 1, 0, rate)
+        playing[s]?.let { pool.stop(it) }
+        playing[s] = pool.play(id, vol, vol, 1, 0, rate)
     }
 
     fun release() = runCatching { pool.release() }

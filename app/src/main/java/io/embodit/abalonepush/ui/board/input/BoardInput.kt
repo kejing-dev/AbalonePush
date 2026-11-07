@@ -117,6 +117,15 @@ private class TapGuard { @Volatile var lastTapMs = 0L }
 /** Last hovered target, so hover changes are logged once. */
 private class HoverState { var last: Any? = null }
 
+/**
+ * Pure twin of [resolveUp] for unit tests and log replay: [chain] is the hit entity's name first, then its parents,
+ * exactly as the `path=a < b < c` field of a TAP / DRAG log line (build.md: 命中目标 -> 格子必须有回放单测).
+ */
+fun <T : Any> resolvePath(chain: List<String>, resolveName: (String) -> T?): T? = chain.firstNotNullOfOrNull(resolveName)
+
+/** Splits a logged `path=` value back into the name chain for [resolvePath]. */
+fun parseLoggedPath(path: String): List<String> = path.split(" < ").map { it.trim() }.filter { it.isNotEmpty() }
+
 /** Walks from [entity] up its parents until [resolver] recognises one. */
 fun <T : Any> resolveUp(entity: Entity?, resolver: TargetResolver<T>, maxDepth: Int = 10): Pair<T?, String> {
     var e = entity

@@ -6,9 +6,7 @@
 - drop_3.wav：CC0 录音 Kenney kenney_impact-sounds / impactGlass_heavy_003.ogg
 - illegal.wav：合成（UI）两声柔和正弦拨音 440→330 Hz、快衰减，非实物声（点灰牌 / 不成线时的提示）
 - lose.wav：CC0 录音 Kenney impact-sounds / impactWood_light_002.ogg（降 10 %）
-- select.wav：CC0 录音 Kenney kenney_impact-sounds / impactGlass_light_000.ogg
-- select_2.wav：CC0 录音 Kenney kenney_impact-sounds / impactGlass_light_001.ogg
-- select_3.wav：CC0 录音 Kenney kenney_impact-sounds / impactGlass_light_002.ogg
+- select.wav：CC0 录音 Kenney kenney_impact-sounds / impactGlass_light_000.ogg（v0.1.1 改：低通 2.5 kHz、120 ms、峰值 -24 dBFS 极柔 tick；选珠 / 加选 / 取消同一声）
 - slide.wav：CC0 录音 Kenney kenney_casino-audio / card-slide-1.ogg
 - slide_2.wav：CC0 录音 Kenney kenney_casino-audio / card-slide-2.ogg
 - slide_3.wav：CC0 录音 Kenney kenney_casino-audio / card-slide-3.ogg
