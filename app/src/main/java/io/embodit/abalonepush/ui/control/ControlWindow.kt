@@ -122,18 +122,21 @@ fun ControlWindow() {
         }
     }
 
+    // The native TabBar is its own system window: it does not see this window's localized context, so the labels are
+    // resolved here (app language) and passed in as plain strings (ui_gates tabbar-lang, build.md 2026-11-05 ②).
+    val tabs = listOf(
+        Triple(Page.PLAY, R.drawable.ic_tab_play, stringResource(R.string.tab_play)),
+        Triple(Page.NEW, R.drawable.ic_tab_new, stringResource(R.string.tab_new)),
+        Triple(Page.RULES, R.drawable.ic_tab_rules, stringResource(R.string.tab_rules)),
+        Triple(Page.SETTINGS, R.drawable.ic_tab_settings, stringResource(R.string.tab_settings)),
+    )
     TabBar(followViewpoints = setOf(ViewPoint.Front, ViewPoint.Left)) {
-        listOf(
-            Triple(Page.PLAY, R.drawable.ic_tab_play, R.string.tab_play),
-            Triple(Page.NEW, R.drawable.ic_tab_new, R.string.tab_new),
-            Triple(Page.RULES, R.drawable.ic_tab_rules, R.string.tab_rules),
-            Triple(Page.SETTINGS, R.drawable.ic_tab_settings, R.string.tab_settings),
-        ).forEach { (page, icon, label) ->
+        tabs.forEach { (page, icon, label) ->
             item(
                 selected = Ui.page == page,
                 onClick = { Ui.page = page },
-                mainContent = { Icon(painter = painterResource(icon), contentDescription = stringResource(label)) },
-                supportContent = { Txt(stringResource(label), "tabbar/${page.name}", style = PicoTheme.typography.labelMedium) },
+                mainContent = { Icon(painter = painterResource(icon), contentDescription = label) },
+                supportContent = { Txt(label, "tabbar/${page.name}", style = PicoTheme.typography.labelMedium) },
             )
         }
     }
